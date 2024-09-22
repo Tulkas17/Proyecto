@@ -15,20 +15,27 @@ import java.util.logging.Logger;
 public class PersonaAspect {
     private static final Logger logger = Logger.getLogger(PersonaAspect.class.getName());
 
-    @Before("execution(* cr.ac.una.springbootaopmaven.controller.PersonaController.savePersona*(..))")
-    public void logBeforeV2(JoinPoint joinPoint) {
-        logger.info("ENTPOINT TTERMINADO ... " + joinPoint.getSignature().getName());
+    // Log antes de ejecutar el método guardarPersona
+    @Before("execution(* cr.ac.una.springbootaopmaven.controller.PersonaController.guardarPersona*(..))")
+    public void logAntesDeGuardar(JoinPoint joinPoint) {
+        logger.info("Iniciando método: " + joinPoint.getSignature().getName() + " en PersonaController");
     }
 
-@Around("execution(* cr.ac.una.springbootaopmaven.controller.PersonaController.*(..))")
-    public Object logAround(ProceedingJoinPoint joinPoint) throws Throwable {
-    long inicio = System.nanoTime();
-    Object procedimiento = joinPoint.proceed();
-    long tiempoEjecucion = System.nanoTime() - inicio;
-    long tiempoEjecucionMilisegundos = tiempoEjecucion / 1000000;
+    // Log alrededor de todos los métodos del controlador
+    @Around("execution(* cr.ac.una.springbootaopmaven.controller.PersonaController.*(..))")
+    public Object logAlrededor(ProceedingJoinPoint joinPoint) throws Throwable {
+        long inicio = System.nanoTime();
+        Object procedimiento = joinPoint.proceed();
+        long tiempoEjecucion = System.nanoTime() - inicio;
+        long tiempoEjecucionMilisegundos = tiempoEjecucion / 1000000;
 
-    logger.info("La Funcion "+ joinPoint.getSignature().getName() + "Fue Ejecutada en " + tiempoEjecucionMilisegundos + " ms");
+        logger.info("El método " + joinPoint.getSignature().getName() + " fue ejecutado en " + tiempoEjecucionMilisegundos + " ms");
+        return procedimiento;
+    }
 
-    return procedimiento;
+    // Log después de ejecutar métodos de generación de reportes
+    @After("execution(* cr.ac.una.springbootaopmaven.controller.PersonaController.generarReporte*(..))")
+    public void logDespuesDeGenerarReporte(JoinPoint joinPoint) {
+        logger.info("Reporte generado por método: " + joinPoint.getSignature().getName() + " en PersonaController");
     }
 }
