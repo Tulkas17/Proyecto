@@ -120,19 +120,7 @@ public class ServicioProcesadorImpl implements IServicioProcesador {
         return reporte;
     }
 
-    @Override
-    public Map<String, Object> generarReporteErrorCritico() {
-        List<String> logs = procesadorLog.lectorArchivoLog();
-        List<String> eventosCriticos = logs.stream()
-                .filter(line -> line.contains("CRITICAL"))
-                .collect(Collectors.toList());
 
-        Map<String, Object> reporte = new HashMap<>();
-        reporte.put("EventosCriticos", eventosCriticos);
-        reporte.put("CantidadEventosCriticos", eventosCriticos.size());
-
-        return reporte;
-    }
 
     @Override
     public Map<String, Object> generarReporteEstatusAplicacion() {
@@ -167,6 +155,35 @@ public class ServicioProcesadorImpl implements IServicioProcesador {
 
         return reporte;
     }
+
+    @Override
+    public Map<String, Object> generarReporteErrorCritico() {
+        List<String> logs = procesadorLog.lectorArchivoLog();
+
+        // Filtrar líneas con errores críticos o tiempos de respuesta largos
+        List<String> eventosCriticos = logs.stream()
+                .filter(line -> line.contains("CRITICAL") || line.contains("500") ||
+                        line.contains("Timeout") || esTiempoRespuestaLargo(line))
+                .collect(Collectors.toList());
+
+        long cantidadEventosCriticos = eventosCriticos.size();
+
+        Map<String, Object> reporte = new HashMap<>();
+        reporte.put("EventosCriticos", eventosCriticos);
+        reporte.put("CantidadEventosCriticos", cantidadEventosCriticos);
+
+        return reporte;
+    }
+
+    // Método para identificar si el tiempo de respuesta es muy largo
+    private boolean esTiempoRespuestaLargo(String line) {
+        if (line.contains("Tiempo de respuesta")) {
+            long tiempo = Long.parseLong(line.replaceAll("\\D+", "")); // Extraer tiempo numérico
+            return tiempo > 5000; // Considerar tiempo mayor a 5000ms como crítico
+        }
+        return false;
+    }
+
 
     private String extraerHora(String lineaLog) {
         // El formato del timestamp en el log es: "2024-09-22T01:53:47.999-06:00"
