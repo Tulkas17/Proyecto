@@ -14,7 +14,7 @@ public class SwaggerConfig {
                 .info(new Info()
                         .title("API de Procesamiento de Logs: Paradigmas Proyecto #1")
                         .version("1.0")
-                        .description("API para procesar y analizar logs de una aplicación Spring Boot")
+                        .description("API diseñada para facilitar la recopilación, procesamiento y análisis de logs generados por una aplicación Spring Boot. Proporciona un conjunto de endpoints que permiten a los desarrolladores y administradores de sistemas acceder a los registros de la aplicación, analizar su rendimiento y detectar errores, contribuyendo así a una mejor comprensión del comportamiento de la aplicación en producción.")
                 );
     }
 }
