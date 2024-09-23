@@ -4,6 +4,8 @@ import cr.ac.una.springbootaopmaven.serviceInterface.IServicioProcesador;
 import org.springframework.stereotype.Service;
 
 import java.util.*;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 import java.util.stream.Collectors;
 
 @Service
@@ -59,12 +61,24 @@ public class ServicioProcesadorImpl implements IServicioProcesador {
     @Override
     public Map<String, Object> generarRespuestaTiempoReporte() {
         List<String> logs = procesadorLog.lectorArchivoLog();
+
+        // Filtrar las líneas que contienen "Tiempo de respuesta"
         List<Long> tiempos = logs.stream()
                 .filter(line -> line.contains("Tiempo de respuesta"))
-                .map(line -> Long.parseLong(line.replaceAll("\\D+", ""))) // Extraer números
+                .map(line -> {
+                    Pattern pattern = Pattern.compile("Tiempo de respuesta para el método .*: (\\d+) ms");
+                    Matcher matcher = pattern.matcher(line);
+                    if (matcher.find()) {
+                        return Long.parseLong(matcher.group(1));  // Extraer el tiempo en milisegundos
+                    } else {
+                        return 0L;  // Si no se encuentra el número, usar 0 como valor por defecto
+                    }
+                })
+                .filter(tiempo -> tiempo > 0)  // Filtrar tiempos inválidos (cero)
                 .collect(Collectors.toList());
 
         if (tiempos.isEmpty()) {
+            // Retornar reporte vacío si no se encontraron tiempos
             return Map.of(
                     "PromedioRespuesta", 0,
                     "TiempoMinimo", 0,
@@ -74,14 +88,16 @@ public class ServicioProcesadorImpl implements IServicioProcesador {
             );
         }
 
+        // Calcular promedio, mínimo, máximo, y mediana de los tiempos
         double promedio = tiempos.stream().mapToLong(Long::longValue).average().orElse(0);
         long minimo = tiempos.stream().mapToLong(Long::longValue).min().orElse(0);
         long maximo = tiempos.stream().mapToLong(Long::longValue).max().orElse(0);
         long mediana = calcularMediana(tiempos);
 
-        // Detectar outliers
+        // Detectar outliers (solicitudes lentas)
         List<Long> outliers = detectarSolicitudesLentas(tiempos);
 
+        // Crear el reporte
         Map<String, Object> reporte = new HashMap<>();
         reporte.put("PromedioRespuesta", promedio);
         reporte.put("TiempoMinimo", minimo);
@@ -96,9 +112,18 @@ public class ServicioProcesadorImpl implements IServicioProcesador {
     @Override
     public Map<String, Object> generarReporteEndPoint() {
         List<String> logs = procesadorLog.lectorArchivoLog();
+
         Map<String, Long> conteoEndpoints = logs.stream()
-                .filter(line -> line.contains("ENDPOINT"))
-                .collect(Collectors.groupingBy(line -> line.split(" ")[1], Collectors.counting()));
+                .filter(line -> line.contains("ENDPOINT"))  // Asegura que la línea contiene un endpoint
+                .map(line -> {
+                    String[] parts = line.split(" ");
+                    if (parts.length > 1 && !parts[1].isEmpty()) {
+                        return parts[1];  // Extrae el endpoint si está presente
+                    } else {
+                        return "Indefinido";  // Asigna un valor por defecto si no hay endpoint
+                    }
+                })
+                .collect(Collectors.groupingBy(endpoint -> endpoint, Collectors.counting()));
 
         String endpointMasUsado = conteoEndpoints.entrySet()
                 .stream()
@@ -197,22 +222,9 @@ public class ServicioProcesadorImpl implements IServicioProcesador {
     }
 
     private List<Long> detectarSolicitudesLentas(List<Long> tiempos) {
-        // Ordenar la lista de tiempos
-        Collections.sort(tiempos);
-
-        // Calcular el cuartil 1 (Q1)
-        long q1 = tiempos.get((int) (0.25 * (tiempos.size() - 1)));
-        // Calcular el cuartil 3 (Q3)
-        long q3 = tiempos.get((int) (0.75 * (tiempos.size() - 1)));
-        // Calcular el rango intercuartil (IQR)
-        long iqr = q3 - q1;
-        // Definir los límites para los outliers
-        long lowerBound = (long) (q1 - 1.5 * iqr);
-        long upperBound = (long) (q3 + 1.5 * iqr);
-
-        // Filtrar los tiempos que son outliers (por encima del upperBound)
+        long umbral = 5000;  // Definir un umbral (por ejemplo, 5000 ms)
         return tiempos.stream()
-                .filter(time -> time < lowerBound || time > upperBound)
+                .filter(tiempo -> tiempo > umbral)
                 .collect(Collectors.toList());
     }
 
