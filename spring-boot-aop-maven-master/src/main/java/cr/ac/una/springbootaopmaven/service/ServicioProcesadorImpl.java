@@ -24,6 +24,7 @@ public class ServicioProcesadorImpl implements IServicioProcesador {
         Map<String, Long> conteoErrores = logs.stream()
                 .filter(line -> line.contains("ERROR"))
                 .collect(Collectors.groupingBy(line -> {
+                    if (line.contains("400")) return "400 Bad Request";
                     if (line.contains("404")) return "404 Not Found";
                     if (line.contains("500")) return "500 Internal Server Error";
                     if (line.contains("NullPointerException")) return "NullPointerException";

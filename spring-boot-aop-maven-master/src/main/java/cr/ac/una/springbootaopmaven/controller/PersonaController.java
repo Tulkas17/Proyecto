@@ -4,6 +4,7 @@ import cr.ac.una.springbootaopmaven.entity.Persona;
 import cr.ac.una.springbootaopmaven.repository.PersonaRepository;
 import cr.ac.una.springbootaopmaven.serviceInterface.IServicioProcesador;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import io.swagger.v3.oas.annotations.Operation;
@@ -40,13 +41,18 @@ public class PersonaController {
     @Operation(summary = "Guardar una nueva persona", description = "Guarda una nueva persona en la base de datos.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Persona creada exitosamente"),
-            @ApiResponse(responseCode = "400", description = "Solicitud incorrecta")
+            @ApiResponse(responseCode = "400", description = "Solicitud incorrecta"),
+            @ApiResponse(responseCode = "500", description = "Internal server error")
     })
     @PostMapping("/persona")
     public ResponseEntity<Persona> savePersona(@RequestBody Persona persona) {
-        return Optional.ofNullable(persona)
+        if (persona.getEdad() == null) {
+            throw new RuntimeException("Edad is invalid, triggering 500");
+        }
+
+        return Optional.of(persona)
                 .filter(p -> p.getNombre() != null && !p.getNombre().isEmpty())
-                .filter(p -> p.getEdad() != null && p.getEdad() >= 0)
+                .filter(p -> p.getEdad() >= 0)
                 .map(p -> personaRepository.save(p))
                 .map(ResponseEntity::ok)
                 .orElseGet(() -> ResponseEntity.badRequest().build());
@@ -55,7 +61,8 @@ public class PersonaController {
     @Operation(summary = "Actualizar una persona", description = "Actualiza los datos de una persona existente en la base de datos.")
     @ApiResponses(value = {
             @ApiResponse(responseCode = "200", description = "Persona actualizada exitosamente"),
-            @ApiResponse(responseCode = "400", description = "Solicitud incorrecta")
+            @ApiResponse(responseCode = "400", description = "Solicitud incorrecta"),
+            @ApiResponse(responseCode = "500", description = "Internal server error")
     })
     @PutMapping("/persona")
     public ResponseEntity<Persona> updatePersona(@RequestBody Persona persona) {
